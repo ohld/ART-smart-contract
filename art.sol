@@ -27,6 +27,15 @@ contract ARToken {
   // hash_of_the_content_by_link => Content struct
   mapping(bytes32 => Content) content;
 
+  function register() {
+    acounts[msg.sender] = Account({
+      rating_sold: 900,
+      rating_store: 200,
+      money: 0,
+      upvotes: 0
+    });
+  }
+
   function add(bytes64 link, uint price, uint flags) {
     // TODO: check if content by link is valid
     // link is concatenation "Account.address" + "Content.hash (bytes32)"
