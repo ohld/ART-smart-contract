@@ -3,8 +3,8 @@ pragma solidity ^0.4.11;
 contract ARToken {
 
   struct Account { // TODO: set initial values for every field
-    uint rating_sold; // 0.9
-    uint rating_store; // 0.02
+    uint rating_sold; // 900 from 850 to 950
+    uint rating_store; // 200 from 100 to 300
     uint money; // 0
     uint upvotes; // 0
   }
@@ -52,9 +52,9 @@ contract ARToken {
     if (sid.money < c.price) throw;
     rewarded_storer = get_storer(id);
     sid.money -= c.price;
-    c.owner.money += c.owner.rating_sold * c.price;
-    rewarded_storer.money += rewarded_storer.rating_store * c.price;
-    ARVRFund.money += c.price * (1 - c.owner.rating_sold - rewarded_storer.rating_store);
+    c.owner.money += c.owner.rating_sold / 1000 * c.price;
+    rewarded_storer.money += rewarded_storer.rating_store / 10000 * c.price;
+    ARVRFund.money += c.price * (1 - c.owner.rating_sold / 1000 - rewarded_storer.rating_store / 10000);
   }
 
   function get_storer(bytes32 id) returns (address) {
@@ -119,14 +119,14 @@ contract ARToken {
       c.flags = 0;
       // pay reporters
       for i in c.reported { // python syntax
-        i.rating_sold = min(i.rating_sold + 0.001, 0.95) // integers?
-        i.rating_store = min(i.rating_store + 0.001, 0.03) // integers?
+        i.rating_sold = min(i.rating_sold + 1, 950)
+        i.rating_store = min(i.rating_store + 1, 300)
       }
     } else {
       // punish reporters
       for i in c.reported { // python syntax
-        i.rating_sold = max(i.rating_sold - 0.01, 0.85) // integers?
-        i.rating_store = max(i.rating_store - 0.002, 0.01) // integers?
+        i.rating_sold = max(i.rating_sold - 10, 850)
+        i.rating_store = max(i.rating_store - 2, 100)
       }
     }
   }
