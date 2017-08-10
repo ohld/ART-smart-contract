@@ -27,6 +27,7 @@ contract ARToken {
   // hash_of_the_content_by_link => Content struct
   mapping(bytes32 => Content) content;
 
+  /* register new user */
   function register() {
     acounts[msg.sender] = Account({
       rating_sold: 900,
@@ -36,19 +37,21 @@ contract ARToken {
     });
   }
 
-  // supportive python-style function
+  /* supportive python-style function */
   function ifin(address a, address[]m) returns (bool) {
     for (uint i = 0; i < m.length; i++)
       if (a == m[i]) return true;
     return false;
   }
 
+  /* supportive python-style function for bytes32 type arrays*/
   function ifinbytes32(bytes32 a, bytes32[]m) returns (bool) {
     for (uint i = 0; i < m.length; i++)
       if (a == m[i]) return true;
     return false;
   }
 
+  /* add content by link with flags and price */
   function add(bytes64 link, uint price, uint flags) {
     // TODO: check if content by link is valid
     // link is concatenation "Account.address" + "Content.hash (bytes32)"
@@ -66,6 +69,7 @@ contract ARToken {
     });
   }
 
+  /* buy content by content_id */
   function buy(bytes32 id) { // id is content_id: content hash value
     Content c = content[id];
     address sid = msg.sender;
@@ -79,29 +83,36 @@ contract ARToken {
     ARVRFund.money += c.price * (1 - c.owner.rating_sold / 1000 - rewarded_storer.rating_store / 10000);
   }
 
+  /* get storage_id by content_id */
   function get_storer(bytes32 id) returns (address) {
     // TODO: implementation, returns best match of item in id.stored_at
     Content c = content[id];
     while (c.stored_at.length != 0) {
       s = c.stored_at.pop(); // pop from queue
-      if is_valid_storage(s) {
-        c.stored_at.add(s); // push to queue
+      if is_valid_content_at_storage(s, id) {
+        c.stored_at.add(s); // push back to queue
         return c;
       }
     }
-    return 0 // invalid address
+    return address(0)
   }
 
-  function is_valid_storage(address storage) returns (bool is_valid) {
-    is_valid = true
+  /* check if content at storage is reachable and valid */
+  function is_valid_content_at_storage(address storage, bytes32 id) returns (bool) {
+    // TODO: logic
+    return true
   }
 
+  /* ----- ---------- ----- */
   /* ----- moderation ----- */
+  /* ----- ---------- ----- */
 
   address public KOSTA = 123123123; // address of main admin (Kosta Popov)
-  address[] public moderators;
-  bytes32[] public ids_to_moderate; // content_ids
+                                    // who can control over moderators
+  address[] public moderators;      // users who have moderation privileges
+  bytes32[] public ids_to_moderate; // content_ids what should be moderated
 
+  /* upvote content_id */
   function upvote(bytes32 id) {
     Content c = content[id];
     address sid = msg.sender;
@@ -110,6 +121,7 @@ contract ARToken {
     c.author.upvotes += 1
   }
 
+  /* report to content_id*/
   function report(bytes32 id) { // TODO: add report type argument
     Content c = content[id];
     address sid = msg.sender;
@@ -122,11 +134,13 @@ contract ARToken {
     }
   }
 
+  /* supportive function */
   function max(uint a, uint b) returns (uint) {
     if (a > b) return a;
     return b;
   }
 
+  /* moderators-only function to decide: delete content or not delete */
   function moderate(bytes32 id, bool vote) {
     Content c = content[id];
     address sid = msg.sender;
@@ -140,19 +154,20 @@ contract ARToken {
       c.stored_at = [];
       c.flags = 0;
       // pay reporters
-      for i in c.reported { // python syntax
-        i.rating_sold = min(i.rating_sold + 1, 950)
-        i.rating_store = min(i.rating_store + 1, 300)
+      for (uint i = 0; i < c.reported.length; i++) {
+        c.reported[i].rating_sold = min(c.reported[i].rating_sold + 1, 950)
+        c.reported[i].rating_store = min(c.reported[i].rating_store + 1, 300)
       }
     } else {
       // punish reporters
-      for i in c.reported { // python syntax
-        i.rating_sold = max(i.rating_sold - 10, 850)
-        i.rating_store = max(i.rating_store - 2, 100)
+      for (uint i = 0; i < c.reported.length; i++) {
+        c.reported[i].rating_sold = max(c.reported[i].rating_sold - 10, 850)
+        c.reported[i].rating_store = max(c.reported[i].rating_store - 2, 100)
       }
     }
   }
 
+  /* admin's method to add moderator */
   function add_moderator(address adr) {
     address sid = msg.sender;
     if (sid != KOSTA) throw;
@@ -160,6 +175,7 @@ contract ARToken {
       moderators.append(adr) // python syntax
   }
 
+  /* admin's method to delete moderator */
   function del_moderator(address adr) {
     address sid = msg.sender;
     if (sid != KOSTA) throw;
