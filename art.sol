@@ -1,9 +1,5 @@
 pragma solidity ^0.4.11;
 
-// queue https://github.com/chriseth/solidity-examples/blob/master/queue.sol
-contract queue {
-}
-
 contract ARToken {
 
 	struct Queue {
@@ -77,21 +73,21 @@ contract ARToken {
 	}
 
     /* supportive python-style function */
-	function ifin(address a, address[]m) returns (bool) {
+	function ifin(address a, address[] m) constant returns (bool) {
 	    for (uint i = 0; i < m.length; i++)
 			if (a == m[i]) return true;
 	    return false;
 	}
 
 	/* supportive python-style function for bytes32 type arrays*/
-	function ifinbytes32(bytes32 a, bytes32[]m) returns (bool) {
+	function ifinbytes32(bytes32 a, bytes32[]m) constant returns (bool) {
 		for (uint i = 0; i < m.length; i++)
 			if (a == m[i]) return true;
 		return false;
 	}
 
 	/* check if content at storage is reachable and valid */
-	function is_valid_content_at_storage(address s, bytes32 id) returns (bool) {
+	function is_valid_content_at_storage(address s, bytes32 id) constant returns (bool) {
 	// id - hash of the file.
 	// storage - address of the user who store that content
 	// TODO: logic
@@ -186,13 +182,13 @@ contract ARToken {
 	}
 
 	/* supportive function */
-	function max(uint a, uint b) returns (uint) {
+	function max(uint a, uint b) constant returns (uint) {
 		if (a > b) return a;
 		return b;
 	}
 
 		/* supportive function */
-	function min(uint a, uint b) returns (uint) {
+	function min(uint a, uint b) constant returns (uint) {
 		if (a < b) return a;
 		return b;
 	}
