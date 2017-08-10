@@ -33,6 +33,7 @@ contract queue
         delete q.data[q.front];
         q.front = (q.front + 1) % q.data.length;
     }
+}
 
 contract ARToken {
 
@@ -92,7 +93,7 @@ contract ARToken {
     // TODO: logic
     // Check if this user store this content (availability)
     // Check if hash of the file with this id equals to id (consistency)
-    return true
+    return true;
   }
 
   /* add content with flags and price */
@@ -112,7 +113,7 @@ contract ARToken {
       flags: flags,
       reported: [],
       report_available: true,
-      upvoted: [],
+      upvoted: []
     });
   }
 
@@ -121,11 +122,11 @@ contract ARToken {
     Content c = content[id];
     address sid = msg.sender;
     // if id.flags don't allow to buy it: throw;
-    if (c.owner == sid || ifin(sid, c.sold_to)) throw; {
+    if (c.owner == sid || ifin(sid, c.sold_to)) throw;
     if (sid.money < c.price) throw;
     rewarded_storer = get_storer(id);
     sid.money -= c.price;
-    c.owner.money += c.owner.rating_sold / 1000 * c.price;
+    c.owner.money += c.owner.rating_sold / 10000 * c.price;
     rewarded_storer.money += rewarded_storer.rating_store / 10000 * c.price;
     ARVRFund.money += c.price * (1 - c.owner.rating_sold / 10000 - rewarded_storer.rating_store / 10000);
   }
@@ -136,12 +137,12 @@ contract ARToken {
     Content c = content[id];
     while (c.stored_at.length != 0) {
       s = c.stored_at.pop(); // pop from queue
-      if is_valid_content_at_storage(s, id) {
+      if (is_valid_content_at_storage(s, id)) {
         c.stored_at.push(s); // push back to queue
         return c;
       }
     }
-    return address(0)
+    return address(0);
   }
 
   /* ----- ---------- ----- */
@@ -159,7 +160,7 @@ contract ARToken {
     address sid = msg.sender;
     if (ifin(sid, c.upvoted)) throw;
     c.upvoted.push(sid);
-    c.author.upvotes += 1
+    c.author.upvotes += 1;
   }
 
   /* report to content_id*/
@@ -196,14 +197,14 @@ contract ARToken {
       c.flags = 0;
       // pay reporters
       for (uint i = 0; i < c.reported.length; i++) {
-        c.reported[i].rating_sold = min(c.reported[i].rating_sold + 1, 9500)
-        c.reported[i].rating_store = min(c.reported[i].rating_store + 1, 300)
+        c.reported[i].rating_sold = min(c.reported[i].rating_sold + 1, 9500);
+        c.reported[i].rating_store = min(c.reported[i].rating_store + 1, 300);
       }
     } else {
       // punish reporters
       for (uint i = 0; i < c.reported.length; i++) {
-        c.reported[i].rating_sold = max(c.reported[i].rating_sold - 10, 8500)
-        c.reported[i].rating_store = max(c.reported[i].rating_store - 2, 100)
+        c.reported[i].rating_sold = max(c.reported[i].rating_sold - 10, 8500);
+        c.reported[i].rating_store = max(c.reported[i].rating_store - 2, 100);
       }
     }
   }
@@ -213,14 +214,15 @@ contract ARToken {
     address sid = msg.sender;
     if (sid != KOSTA) throw;
     if (!ifin(adr, moderators))
-      moderators.push(adr) // python syntax
+      moderators.push(adr); // python syntax
   }
 
   /* admin's method to delete moderator */
   function del_moderator(address adr) {
     address sid = msg.sender;
     if (sid != KOSTA) throw;
-    if (ifin(adr, moderators))
-      moderators.delete(adr) // python syntax
+    for (uint i = 0; i < moderators.length; i++) {
+        if (moderators[i] == adr) delete(moderators[i]);
+    }
   }
 }
