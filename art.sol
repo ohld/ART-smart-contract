@@ -101,9 +101,9 @@ contract ARToken {
     // TODO: check if content by link is valid
     // link is concatenation "Account.address" + "Content.hash (bytes32)"
     // content_id is hash_of_the_content_by_link
-    if (content[id].author != address(0x0)) throw; // content with that id is in the base
-    if (!is_valid_content_at_storage(msg.sender, id)) throw;
-    if (price < 0) throw; // price < 0 is not allowed
+    require(content[id].author == address(0x0)); // content with that id is in the base
+    require(is_valid_content_at_storage(msg.sender, id));
+    require(price >= 0);
     content[id] = Content({
       author: msg.sender,
       owner: msg.sender,
@@ -123,8 +123,8 @@ contract ARToken {
     Content storage c = content[id];
     address sid = msg.sender;
     // if id.flags don't allow to buy it: throw;
-    if (c.owner == sid || ifin(sid, c.sold_to)) throw;
-    if (sid.money < c.price) throw;
+    require(c.owner != sid && !ifin(sid, c.sold_to));
+    require(sid.money >= c.price);
     address rewarded_storer = get_storer(id);
     sid.money -= c.price;
     c.owner.money += c.owner.rating_sold / 10000 * c.price;
@@ -159,7 +159,7 @@ contract ARToken {
   function upvote(bytes32 id) {
     Content storage c = content[id];
     address sid = msg.sender;
-    if (ifin(sid, c.upvoted)) throw;
+    require(!ifin(sid, c.upvoted));
     c.upvoted.push(sid);
     c.author.upvotes += 1;
   }
@@ -168,11 +168,11 @@ contract ARToken {
   function report(bytes32 id) { // TODO: add report type argument
     Content storage c = content[id];
     address sid = msg.sender;
-    if (c.report_available == 0) throw;
-    if (ifin(sid, c.reported)) throw;
+    require(c.report_available == true);
+    require(!ifin(sid, c.reported));
     c.reported.push(sid);
     if (c.reported.length > 10 + 10 ** (-5) * (c.author.upvotes) ** 2) { // dont know if it would work
-      c.report_available = 0;
+      c.report_available = false;
       ids_to_moderate.push(id);
     }
   }
@@ -194,8 +194,8 @@ contract ARToken {
     uint i = 0;
     Content storage c = content[id];
     address sid = msg.sender;
-    if (!ifinbytes32(id,ids_to_moderate)) throw; // python syntax
-    if (!ifin(sid, moderators)) throw;
+    require(ifinbytes32(id,ids_to_moderate)); // python syntax
+    require(ifin(sid, moderators));
     if (vote) {
       // delete content
       c.author = 0;
@@ -220,7 +220,7 @@ contract ARToken {
   /* admin's method to add moderator */
   function add_moderator(address adr) {
     address sid = msg.sender;
-    if (sid != KOSTA) throw;
+    require(sid == KOSTA);
     if (!ifin(adr, moderators))
       moderators.push(adr); // python syntax
   }
@@ -228,7 +228,7 @@ contract ARToken {
   /* admin's method to delete moderator */
   function del_moderator(address adr) {
     address sid = msg.sender;
-    if (sid != KOSTA) throw;
+    require(sid == KOSTA);
     for (uint i = 0; i < moderators.length; i++) {
         if (moderators[i] == adr) delete(moderators[i]);
     }
