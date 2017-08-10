@@ -88,38 +88,29 @@ contract ARToken {
 
 	/* check if content at storage is reachable and valid */
 	function is_valid_content_at_storage(address s, bytes32 id) constant returns (bool) {
-	// id - hash of the file.
-	// storage - address of the user who store that content
-	// TODO: logic
-	// Check if this user store this content (availability)
-	// Check if hash of the file with this id equals to id (consistency)
+    	// get request to the user 's' server,
+    	// request content by it's hash 'id',
+    	// check if 'id' equals hash(content).
 		return true;
 	}
 
 	/* add content with flags and price */
 	function add(bytes32 id, uint price, uint flags) {
-	// TODO: check if content by link is valid
-	// link is concatenation "Account.address" + "Content.hash (bytes32)"
-	// content_id is hash_of_the_content_by_link
+    	// TODO: check if content by link is valid
+    	// link is concatenation "Account.address" + "Content.hash (bytes32)"
+    	// content_id is hash_of_the_content_by_link
+
 		require(content[id].author == address(0x0)); // content with that id is in the base
 		require(is_valid_content_at_storage(msg.sender, id));
 		require(price >= 0);
-		content[id] = Content({
-			author: msg.sender,
-			owner: msg.sender,
-			sold_to: new address[](0),
-			stored_at: Queue({
-				data: new address[](0),
-				front: 0,
-				back: 0
-			}),
-			price: price,
-			flags: flags,
-			reported: new address[](0),
-			report_available: true,
-			upvoted: new address[](0)
-		});
-	push(content[id].stored_at, msg.sender);
+
+		content[id].author = msg.sender;
+		content[id].owner = msg.sender;
+		content[id].price = price;
+		content[id].flags = flags;
+		content[id].report_available = true;
+// 		content[id].stored_at = new // How to initialize struct properly?
+		push(content[id].stored_at, msg.sender);
 	}
 
 	/* buy content with content_id */
