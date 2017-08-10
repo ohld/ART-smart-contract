@@ -178,7 +178,7 @@ contract ARToken {
 		return b;
 	}
 
-		/* supportive function */
+	/* supportive function */
 	function min(uint a, uint b) constant returns (uint) {
 		if (a < b) return a;
 		return b;
