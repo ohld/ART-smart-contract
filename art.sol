@@ -1,9 +1,43 @@
 pragma solidity ^0.4.11;
 
+// queue https://github.com/chriseth/solidity-examples/blob/master/queue.sol
+contract queue
+{
+    struct Queue {
+        address[] data;
+        uint front;
+        uint back;
+    }
+    /// @dev the number of elements stored in the queue.
+    function length(Queue storage q) constant internal returns (uint) {
+        return q.back - q.front;
+    }
+    /// @dev the number of elements this queue can hold
+    function capacity(Queue storage q) constant internal returns (uint) {
+        return q.data.length - 1;
+    }
+    /// @dev push a new element to the back of the queue
+    function push(Queue storage q, address data) internal
+    {
+        if ((q.back + 1) % q.data.length == q.front)
+            return; // throw;
+        q.data[q.back] = data;
+        q.back = (q.back + 1) % q.data.length;
+    }
+    /// @dev remove and return the element at the front of the queue
+    function pop(Queue storage q) internal returns (address r)
+    {
+        if (q.back == q.front)
+            return; // throw;
+        r = q.data[q.front];
+        delete q.data[q.front];
+        q.front = (q.front + 1) % q.data.length;
+    }
+
 contract ARToken {
 
   struct Account { // TODO: set initial values for every field
-    uint rating_sold; // 900 from 850 to 950
+    uint rating_sold; // 9000 from 8500 to 9500
     uint rating_store; // 200 from 100 to 300
     uint money; // 0
     uint upvotes; // 0
@@ -16,7 +50,7 @@ contract ARToken {
     address author;
     address owner;
     address[] sold_to;
-    address[] stored_at;
+    Queue stored_at;
     uint price;
     uint flags;
     address[] reported;
@@ -51,25 +85,38 @@ contract ARToken {
     return false;
   }
 
-  /* add content by link with flags and price */
-  function add(bytes64 link, uint price, uint flags) {
+  /* check if content at storage is reachable and valid */
+  function is_valid_content_at_storage(address storage, bytes32 id) returns (bool) {
+    // id - hash of the file.
+    // storage - address of the user who store that content
+    // TODO: logic
+    // Check if this user store this content (availability)
+    // Check if hash of the file with this id equals to id (consistency)
+    return true
+  }
+
+  /* add content with flags and price */
+  function add(bytes64 id, uint price, uint flags) {
     // TODO: check if content by link is valid
     // link is concatenation "Account.address" + "Content.hash (bytes32)"
     // content_id is hash_of_the_content_by_link
-    content["hash_of_the_content_by_link"] = Content({
-                author: msg.sender,
-                owner: msg.sender,
-                sold_to: [],
-                stored_at: [msg.sender],
-                price: price,
-                flags: flags,
-                reported: [],
-                report_available: true,
-                upvoted: [],
+    if (content[id] != address(0)) throw; // content with that id is in the base
+    if (!is_valid_content_at_storage(msg.sender, id)) throw;
+    if (price < 0) throw; // price < 0 is not allowed
+    content[id] = Content({
+      author: msg.sender,
+      owner: msg.sender,
+      sold_to: [],
+      stored_at: [msg.sender],
+      price: price,
+      flags: flags,
+      reported: [],
+      report_available: true,
+      upvoted: [],
     });
   }
 
-  /* buy content by content_id */
+  /* buy content with content_id */
   function buy(bytes32 id) { // id is content_id: content hash value
     Content c = content[id];
     address sid = msg.sender;
@@ -80,7 +127,7 @@ contract ARToken {
     sid.money -= c.price;
     c.owner.money += c.owner.rating_sold / 1000 * c.price;
     rewarded_storer.money += rewarded_storer.rating_store / 10000 * c.price;
-    ARVRFund.money += c.price * (1 - c.owner.rating_sold / 1000 - rewarded_storer.rating_store / 10000);
+    ARVRFund.money += c.price * (1 - c.owner.rating_sold / 10000 - rewarded_storer.rating_store / 10000);
   }
 
   /* get storage_id by content_id */
@@ -90,17 +137,11 @@ contract ARToken {
     while (c.stored_at.length != 0) {
       s = c.stored_at.pop(); // pop from queue
       if is_valid_content_at_storage(s, id) {
-        c.stored_at.add(s); // push back to queue
+        c.stored_at.push(s); // push back to queue
         return c;
       }
     }
     return address(0)
-  }
-
-  /* check if content at storage is reachable and valid */
-  function is_valid_content_at_storage(address storage, bytes32 id) returns (bool) {
-    // TODO: logic
-    return true
   }
 
   /* ----- ---------- ----- */
@@ -117,7 +158,7 @@ contract ARToken {
     Content c = content[id];
     address sid = msg.sender;
     if (ifin(sid, c.upvoted)) throw;
-    c.upvoted.append(sid);
+    c.upvoted.push(sid);
     c.author.upvotes += 1
   }
 
@@ -127,10 +168,10 @@ contract ARToken {
     address sid = msg.sender;
     if (c.report_available == 0) throw;
     if (ifin(sid, c.reported)) throw;
-    c.reported.append(sid);
+    c.reported.push(sid);
     if (c.reported.length > 10 + 10 ** (-5) * (c.author.upvotes) ** 2) { // dont know if it would work
       c.report_available = 0;
-      ids_to_moderate.append(id);
+      ids_to_moderate.push(id);
     }
   }
 
@@ -155,13 +196,13 @@ contract ARToken {
       c.flags = 0;
       // pay reporters
       for (uint i = 0; i < c.reported.length; i++) {
-        c.reported[i].rating_sold = min(c.reported[i].rating_sold + 1, 950)
+        c.reported[i].rating_sold = min(c.reported[i].rating_sold + 1, 9500)
         c.reported[i].rating_store = min(c.reported[i].rating_store + 1, 300)
       }
     } else {
       // punish reporters
       for (uint i = 0; i < c.reported.length; i++) {
-        c.reported[i].rating_sold = max(c.reported[i].rating_sold - 10, 850)
+        c.reported[i].rating_sold = max(c.reported[i].rating_sold - 10, 8500)
         c.reported[i].rating_store = max(c.reported[i].rating_store - 2, 100)
       }
     }
@@ -172,7 +213,7 @@ contract ARToken {
     address sid = msg.sender;
     if (sid != KOSTA) throw;
     if (!ifin(adr, moderators))
-      moderators.append(adr) // python syntax
+      moderators.push(adr) // python syntax
   }
 
   /* admin's method to delete moderator */
