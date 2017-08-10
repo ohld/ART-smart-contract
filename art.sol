@@ -36,6 +36,19 @@ contract ARToken {
     });
   }
 
+  // supportive python-style function
+  function ifin(address a, address[]m) returns (bool) {
+    for (uint i = 0; i < m.length; i++)
+      if (a == m[i]) return true;
+    return false;
+  }
+
+  function ifinbytes32(bytes32 a, bytes32[]m) returns (bool) {
+    for (uint i = 0; i < m.length; i++)
+      if (a == m[i]) return true;
+    return false;
+  }
+
   function add(bytes64 link, uint price, uint flags) {
     // TODO: check if content by link is valid
     // link is concatenation "Account.address" + "Content.hash (bytes32)"
@@ -57,7 +70,7 @@ contract ARToken {
     Content c = content[id];
     address sid = msg.sender;
     // if id.flags don't allow to buy it: throw;
-    if (c.owner == sid || sid in c.sold_to) throw; { // python syntax
+    if (c.owner == sid || ifin(sid, c.sold_to)) throw; {
     if (sid.money < c.price) throw;
     rewarded_storer = get_storer(id);
     sid.money -= c.price;
@@ -92,7 +105,7 @@ contract ARToken {
   function upvote(bytes32 id) {
     Content c = content[id];
     address sid = msg.sender;
-    if (sid in c.upvoted) throw; // python syntax
+    if (ifin(sid, c.upvoted)) throw;
     c.upvoted.append(sid);
     c.author.upvotes += 1
   }
@@ -101,9 +114,9 @@ contract ARToken {
     Content c = content[id];
     address sid = msg.sender;
     if (c.report_available == 0) throw;
-    if (sid in c.reported) throw; // python syntax
+    if (ifin(sid, c.reported)) throw;
     c.reported.append(sid);
-    if (c.reported.length > 10 + 10 ** (-5) * (c.author.upvotes) ** 2) {
+    if (c.reported.length > 10 + 10 ** (-5) * (c.author.upvotes) ** 2) { // dont know if it would work
       c.report_available = 0;
       ids_to_moderate.append(id);
     }
@@ -117,8 +130,8 @@ contract ARToken {
   function moderate(bytes32 id, bool vote) {
     Content c = content[id];
     address sid = msg.sender;
-    if (id not in ids_to_moderate) throw; // python syntax
-    if (sid not in moderators) throw; // python syntax
+    if (!ifinbytes32(id,ids_to_moderate)) throw; // python syntax
+    if (!ifin(sid, moderators)) throw;
     if (vote) {
       // delete content
       c.author = 0;
@@ -143,14 +156,14 @@ contract ARToken {
   function add_moderator(address adr) {
     address sid = msg.sender;
     if (sid != KOSTA) throw;
-    if (adr not in moderators) // python syntax
+    if (!ifin(adr, moderators))
       moderators.append(adr) // python syntax
   }
 
   function del_moderator(address adr) {
     address sid = msg.sender;
     if (sid != KOSTA) throw;
-    if (adr in moderators) // python syntax
+    if (ifin(adr, moderators))
       moderators.delete(adr) // python syntax
   }
 }
