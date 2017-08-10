@@ -51,7 +51,7 @@ contract ARToken {
     address author;
     address owner;
     address[] sold_to;
-    Queue stored_at;
+    queue stored_at;
     uint price;
     uint flags;
     address[] reported;
@@ -64,8 +64,8 @@ contract ARToken {
 
   /* register new user */
   function register() {
-    acounts[msg.sender] = Account({
-      rating_sold: 900,
+    accounts[msg.sender] = Account({
+      rating_sold: 9000,
       rating_store: 200,
       money: 0,
       upvotes: 0
@@ -87,7 +87,7 @@ contract ARToken {
   }
 
   /* check if content at storage is reachable and valid */
-  function is_valid_content_at_storage(address storage, bytes32 id) returns (bool) {
+  function is_valid_content_at_storage(address s, bytes32 id) returns (bool) {
     // id - hash of the file.
     // storage - address of the user who store that content
     // TODO: logic
@@ -97,34 +97,35 @@ contract ARToken {
   }
 
   /* add content with flags and price */
-  function add(bytes64 id, uint price, uint flags) {
+  function add(bytes32 id, uint price, uint flags) {
     // TODO: check if content by link is valid
     // link is concatenation "Account.address" + "Content.hash (bytes32)"
     // content_id is hash_of_the_content_by_link
-    if (content[id] != address(0)) throw; // content with that id is in the base
+    if (content[id].author != address(0x0)) throw; // content with that id is in the base
     if (!is_valid_content_at_storage(msg.sender, id)) throw;
     if (price < 0) throw; // price < 0 is not allowed
     content[id] = Content({
       author: msg.sender,
       owner: msg.sender,
-      sold_to: [],
-      stored_at: [msg.sender],
+      sold_to: new address[](0),
+      stored_at: new queue,
       price: price,
       flags: flags,
-      reported: [],
+      reported: new address[](0),
       report_available: true,
-      upvoted: []
+      upvoted: new address[](0)
     });
+    queue.push(content[id].stored_at, msg.sender);
   }
 
   /* buy content with content_id */
   function buy(bytes32 id) { // id is content_id: content hash value
-    Content c = content[id];
+    Content storage c = content[id];
     address sid = msg.sender;
     // if id.flags don't allow to buy it: throw;
     if (c.owner == sid || ifin(sid, c.sold_to)) throw;
     if (sid.money < c.price) throw;
-    rewarded_storer = get_storer(id);
+    address rewarded_storer = get_storer(id);
     sid.money -= c.price;
     c.owner.money += c.owner.rating_sold / 10000 * c.price;
     rewarded_storer.money += rewarded_storer.rating_store / 10000 * c.price;
@@ -134,9 +135,9 @@ contract ARToken {
   /* get storage_id by content_id */
   function get_storer(bytes32 id) returns (address) {
     // TODO: implementation, returns best match of item in id.stored_at
-    Content c = content[id];
+    Content storage c = content[id];
     while (c.stored_at.length != 0) {
-      s = c.stored_at.pop(); // pop from queue
+      address s = c.stored_at.pop(); // pop from queue
       if (is_valid_content_at_storage(s, id)) {
         c.stored_at.push(s); // push back to queue
         return c;
@@ -156,7 +157,7 @@ contract ARToken {
 
   /* upvote content_id */
   function upvote(bytes32 id) {
-    Content c = content[id];
+    Content storage c = content[id];
     address sid = msg.sender;
     if (ifin(sid, c.upvoted)) throw;
     c.upvoted.push(sid);
@@ -165,7 +166,7 @@ contract ARToken {
 
   /* report to content_id*/
   function report(bytes32 id) { // TODO: add report type argument
-    Content c = content[id];
+    Content storage c = content[id];
     address sid = msg.sender;
     if (c.report_available == 0) throw;
     if (ifin(sid, c.reported)) throw;
@@ -182,9 +183,16 @@ contract ARToken {
     return b;
   }
 
+    /* supportive function */
+  function min(uint a, uint b) returns (uint) {
+    if (a < b) return a;
+    return b;
+  }
+
   /* moderators-only function to decide: delete content or not delete */
   function moderate(bytes32 id, bool vote) {
-    Content c = content[id];
+    uint i = 0;
+    Content storage c = content[id];
     address sid = msg.sender;
     if (!ifinbytes32(id,ids_to_moderate)) throw; // python syntax
     if (!ifin(sid, moderators)) throw;
@@ -196,13 +204,13 @@ contract ARToken {
       c.stored_at = [];
       c.flags = 0;
       // pay reporters
-      for (uint i = 0; i < c.reported.length; i++) {
+      for (i = 0; i < c.reported.length; i++) {
         c.reported[i].rating_sold = min(c.reported[i].rating_sold + 1, 9500);
         c.reported[i].rating_store = min(c.reported[i].rating_store + 1, 300);
       }
     } else {
       // punish reporters
-      for (uint i = 0; i < c.reported.length; i++) {
+      for (i = 0; i < c.reported.length; i++) {
         c.reported[i].rating_sold = max(c.reported[i].rating_sold - 10, 8500);
         c.reported[i].rating_store = max(c.reported[i].rating_store - 2, 100);
       }
