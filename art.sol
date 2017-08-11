@@ -2,6 +2,10 @@ pragma solidity ^0.4.11;
 
 contract ARToken {
 
+    /* --- -------------- --- */
+	/* --- queue contract --- */
+	/* --- -------------- --- */
+
 	struct Queue {
 		address[] data;
 		uint front;
@@ -19,7 +23,7 @@ contract ARToken {
 	function push(Queue storage q, address data) internal
 	{
 		if ((q.back + 1) % q.data.length == q.front)
-			return; // throw;
+			return;
 		q.data[q.back] = data;
 		q.back = (q.back + 1) % q.data.length;
 	}
@@ -27,7 +31,7 @@ contract ARToken {
 	function pop(Queue storage q) internal returns (address r)
 	{
 		if (q.back == q.front)
-			return; // throw;
+			return;
 		r = q.data[q.front];
 		delete q.data[q.front];
 		q.front = (q.front + 1) % q.data.length;
@@ -37,38 +41,58 @@ contract ARToken {
 	/* --- artoken contract --- */
 	/* --- ---------------- --- */
 
-	struct Account { // TODO: set initial values for every field
-		uint rating_sold; // 9000 from 8500 to 9500
-		uint rating_store; // 200 from 100 to 300
-		uint money; // 0
-		uint upvotes; // 0
+	struct Account {
+		uint rating_sold;
+		uint money;
+		uint upvotes;
+		bool is_value;
+	}
+
+	struct Database {
+	    bytes32 link;
+	    uint rating_store;
+		bool is_value;
 	}
 
 	mapping(address => Account) public accounts;
-	address ARVRFund = 123123123;
+	mapping(address => Database) public databases;
+
+	address ARVRFund = 123123123; // should be smart-contract creator?
 
 	struct Content {
 		address author;
 		address owner;
-		address[] sold_to;
-		Queue stored_at;
+		address[] sold_to; // Accounts
+		Queue stored_at; // Databases
 		uint price;
-		uint flags;
-		address[] reported;
+		uint flags; // have not realized yet
+		address[] reported; // Accounts
 		bool report_available;
-		address[] upvoted;
+		address[] upvoted; // Accounts
+		bool is_value;
 	}
 
-	// hash_of_the_content_by_link => Content struct
+	// hash_of_the_content => Content struct
 	mapping(bytes32 => Content) content;
 
-	/* register new user */
-	function register() {
+	/* register new account */
+	function register_account() {
+		require(accounts[msg.sender].is_value == false);
 		accounts[msg.sender] = Account({
 			rating_sold: 9000,
-			rating_store: 200,
 			money: 0,
-			upvotes: 0
+			upvotes: 0,
+			is_value: true
+		});
+	}
+
+	/* register new database */
+	function register_database(bytes32 link) {
+		require(databases[msg.sender].is_value == false);
+		databases[msg.sender] = Database({
+			rating_store: 200,
+			link: link,
+			is_value: true
 		});
 	}
 
@@ -79,7 +103,7 @@ contract ARToken {
 	    return false;
 	}
 
-	/* supportive python-style function for bytes32 type arrays*/
+	/* supportive python-style function for bytes32 type arrays */
 	function ifinbytes32(bytes32 a, bytes32[]m) constant returns (bool) {
 		for (uint i = 0; i < m.length; i++)
 			if (a == m[i]) return true;
@@ -96,35 +120,18 @@ contract ARToken {
 
 	/* add content with flags and price */
 	function add(bytes32 id, uint price, uint flags) {
-    	// TODO: check if content by link is valid
-    	// link is concatenation "Account.address" + "Content.hash (bytes32)"
-    	// content_id is hash_of_the_content_by_link
-
-		require(content[id].author == address(0x0)); // content with that id is in the base
-		require(is_valid_content_at_storage(msg.sender, id));
+		require(content[id].is_value == false);
 		require(price >= 0);
+		require(is_valid_content_at_storage(msg.sender, id));
 
 		content[id].author = msg.sender;
 		content[id].owner = msg.sender;
 		content[id].price = price;
 		content[id].flags = flags;
 		content[id].report_available = true;
+		content[id].is_value = true;
 // 		content[id].stored_at = new // How to initialize struct properly?
-		push(content[id].stored_at, msg.sender);
-	}
-
-	/* buy content with content_id */
-	function buy(bytes32 id) { // id is content_id: content hash value
-		Content storage c = content[id];
-		address sid = msg.sender;
-		// if id.flags don't allow to buy it: throw;
-		require(c.owner != sid && !ifin(sid, c.sold_to));
-		require(accounts[sid].money >= c.price);
-		address rewarded_storer = get_storer(id);
-		accounts[sid].money -= c.price;
-		accounts[c.owner].money += accounts[c.owner].rating_sold / 10000 * c.price;
-		accounts[rewarded_storer].money += accounts[rewarded_storer].rating_store / 10000 * c.price;
-		accounts[ARVRFund].money += c.price * (1 - accounts[c.owner].rating_sold / 10000 - accounts[rewarded_storer].rating_store / 10000);
+		push(content[id].stored_at, msg.sender); // failes here
 	}
 
 	/* get storage_id by content_id */
@@ -140,6 +147,21 @@ contract ARToken {
 		}
 		return address(0);
 	 }
+
+	/* buy content with content_id */
+	function buy(bytes32 id) { // id is content_id: content hash value
+		Content storage c = content[id];
+		address sid = msg.sender;
+		// if id.flags don't allow to buy it: throw;
+		require(c.owner != sid);
+		require(!ifin(sid, c.sold_to));
+		require(accounts[sid].money >= c.price);
+		address rewarded_storer = get_storer(id);
+		accounts[sid].money -= c.price;
+		accounts[c.owner].money += accounts[c.owner].rating_sold / 10000 * c.price;
+		accounts[rewarded_storer].money += databases[rewarded_storer].rating_store / 10000 * c.price;
+		accounts[ARVRFund].money += c.price * (1 - accounts[c.owner].rating_sold / 10000 - databases[rewarded_storer].rating_store / 10000);
+	}
 
 	/* ----- ---------- ----- */
 	/* ----- moderation ----- */
@@ -195,7 +217,7 @@ contract ARToken {
 			// pay reporters
 			for (i = 0; i < c.reported.length; i++) {
 				accounts[c.reported[i]].rating_sold = min(accounts[c.reported[i]].rating_sold + 1, 9500);
-    			accounts[c.reported[i]].rating_store = min(accounts[c.reported[i]].rating_store + 1, 300);
+    			/*accounts[c.reported[i]].rating_store = min(accounts[c.reported[i]].rating_store + 1, 300);*/
 			}
 			// delete content
 			c.author = 0;
@@ -211,23 +233,21 @@ contract ARToken {
 			// punish reporters
 			for (i = 0; i < c.reported.length; i++) {
 				accounts[c.reported[i]].rating_sold = max(accounts[c.reported[i]].rating_sold - 10, 8500);
-				accounts[c.reported[i]].rating_store = max(accounts[c.reported[i]].rating_store - 2, 100);
+				/*accounts[c.reported[i]].rating_store = max(accounts[c.reported[i]].rating_store - 2, 100);*/
 			}
 		}
 	}
 
 	/* admin's method to add moderator */
 	function add_moderator(address adr) {
-		address sid = msg.sender;
-		require(sid == KOSTA);
+		require(msg.sender == KOSTA);
 		if (!ifin(adr, moderators))
 			moderators.push(adr); // python syntax
 	}
 
 	/* admin's method to delete moderator */
 	function del_moderator(address adr) {
-		address sid = msg.sender;
-		require(sid == KOSTA);
+		require(msg.sender == KOSTA);
 		for (uint i = 0; i < moderators.length; i++) {
 				if (moderators[i] == adr) delete(moderators[i]);
 		}
