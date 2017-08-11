@@ -76,11 +76,21 @@ contract Storages is queue {
         _delete(storages, s);
     }
 
-    function add_content_to_storage(bytes32 s, bytes32 content_id) {
-        if (contents[s].data.length == 0) {
-            contents[s].data.length = 2;
-            _push(contents[s], content_id);
-        } else if (!_if_in_queue(contents[s], content_id))
-            _push(contents[s], content_id);
+    function add_content_to_storage(bytes32 content_id, bytes32 stor) {
+        if (contents[content_id].data.length == 0) {
+            contents[content_id].data.length = 2;
+            _push(contents[content_id], stor);
+        } else if (!_if_in_queue(contents[content_id], stor))
+            _push(contents[content_id], stor);
+    }
+
+    function get_storage_by_content(bytes32 content_id) returns (bytes32 stor) {
+        if (contents[content_id].data.length == 0) {
+            // not found
+            return bytes32(0);
+        }
+        bytes32 s = _pop(contents[content_id]);
+        _push(contents[content_id], s);
+        return s;
     }
 }
