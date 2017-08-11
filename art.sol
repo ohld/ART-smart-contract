@@ -130,8 +130,10 @@ contract ARToken {
 		content[id].flags = flags;
 		content[id].report_available = true;
 		content[id].is_value = true;
-// 		content[id].stored_at = new // How to initialize struct properly?
+		// content[id].stored_at = new // How to initialize struct properly?
+		//
 		push(content[id].stored_at, msg.sender); // failes here
+
 	}
 
 	/* get storage_id by content_id */
