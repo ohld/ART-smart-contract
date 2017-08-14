@@ -18,15 +18,16 @@ contract queue
 
     function _push(Queue storage q, bytes32 data) internal {
         if ((q.back + 1) % q.data.length == q.front)
+            // increase the queue length to fit the input data amount
             q.data.length *= 2;
-            // return; // throw;
+            // return;
         q.data[q.back] = data;
         q.back = (q.back + 1) % q.data.length;
     }
 
     function _pop(Queue storage q) internal returns (bytes32 r) {
         if (q.back == q.front)
-            return; // throw;
+            return;
         r = q.data[q.front];
         delete q.data[q.front];
         q.front = (q.front + 1) % q.data.length;
@@ -34,7 +35,7 @@ contract queue
 
     function _pop_back(Queue storage q) internal returns (bytes32 r) {
         if (q.back == q.front)
-            return; // throw;
+            return;
         r = q.data[q.back];
         delete q.data[q.back];
         q.back = (q.back - 1) % q.data.length;
@@ -60,12 +61,43 @@ contract queue
 
 contract Storages is queue {
 
+    address root_admin;
+    address[] admins;
     Queue public storages;
     mapping(bytes32 => Queue) public contents;
 
-    function Storages() { storages.data.length = 2; }
+    function Storages() {
+        root_admin = msg.sender;
+        admins.push(root_admin);
+        storages.data.length = 2; // init queue
+    }
 
-    function add(bytes32 d) { _push(storages, d); }
+    function ifin(address[] adrs, address adr) returns (bool) {
+        for (uint i = 0; i < adrs.length; ++i)
+            if (adrs[i] == adr)
+                return true;
+        return false;
+    }
+
+    function add_admin(address adr) {
+        require(msg.sender == root_admin);
+        require(!ifin(admins, adr));
+        admins.push(adr);
+    }
+
+    function del_admin(address adr) {
+        require(msg.sender == root_admin);
+        for (uint i = 0; i < admins.length; ++i)
+            if (admins[i] == adr) {
+                delete admins[i];
+                return;
+            }
+    }
+
+    function add_storage(bytes32 d) {
+        require(ifin(admins, msg.sender));
+        _push(storages, d);
+    }
 
     function get_storage() returns (bytes32 s) {
         s = _pop(storages);
@@ -73,11 +105,13 @@ contract Storages is queue {
     }
 
     function delete_storage(bytes32 s) {
+        require(ifin(admins, msg.sender));
         _delete(storages, s);
     }
 
     function add_content_to_storage(bytes32 content_id, bytes32 stor) {
         if (contents[content_id].data.length == 0) {
+            // init empty queue
             contents[content_id].data.length = 2;
             _push(contents[content_id], stor);
         } else if (!_if_in_queue(contents[content_id], stor))
