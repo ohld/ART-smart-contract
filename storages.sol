@@ -19,8 +19,7 @@ contract queue
     function _push(Queue storage q, bytes32 data) internal {
         if ((q.back + 1) % q.data.length == q.front)
             // increase the queue length to fit the input data amount
-            q.data.length *= 2;
-            // return;
+            q.data.length *= 2 + 1;
         q.data[q.back] = data;
         q.back = (q.back + 1) % q.data.length;
     }
