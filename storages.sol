@@ -32,14 +32,6 @@ contract queue
         q.front = (q.front + 1) % q.data.length;
     }
 
-    function _pop_back(Queue storage q) internal returns (bytes32 r) {
-        if (q.back == q.front)
-            return;
-        r = q.data[q.back];
-        delete q.data[q.back];
-        q.back = (q.back - 1) % q.data.length;
-    }
-
     function _if_in_queue(Queue storage q, bytes32 item) internal returns (bool) {
         for (uint i = 0; i < q.data.length; i++)
             if (q.data[i] == item) return true;
