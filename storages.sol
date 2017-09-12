@@ -6,6 +6,8 @@ contract queue
         bytes32[] data;
         uint front;
         uint back;
+        //value to extend queue size
+        uint constant INCREMENT = 1000000000;
     }
 
     function _length(Queue storage q) constant internal returns (uint) {
@@ -17,9 +19,13 @@ contract queue
     }
 
     function _push(Queue storage q, bytes32 data) internal {
-        if ((q.back + 1) % q.data.length == q.front)
+        if ((q.back + 1) % q.data.length == q.front){
+            // check if more than 2^256
+            if (q.data.length < q.data.length + INCREMENT)
+                return;
             // increase the queue length to fit the input data amount
-            q.data.length = 2 * q.data.length + 1;
+            q.data.length += INCREMENT;
+        }
         q.data[q.back] = data;
         q.back = (q.back + 1) % q.data.length;
     }
@@ -78,6 +84,7 @@ contract Storages is queue {
 
     function del_admin(address adr) {
         require(msg.sender == root_admin);
+        require(adr != root_admin);
         for (uint i = 0; i < admins.length; ++i)
             if (admins[i] == adr) {
                 delete admins[i];
